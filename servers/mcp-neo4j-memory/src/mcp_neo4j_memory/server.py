@@ -218,6 +218,80 @@ def create_mcp_server(memory: Neo4jMemory, description_manager: DynamicToolDescr
                 logger.error(f"Error checking dynamic descriptions health: {e}")
                 raise ToolError(f"Error checking dynamic descriptions health: {e}")
 
+        # Phase 2: Evo-Memory Integration Tools
+        @mcp.tool(annotations=ToolAnnotations(title="Setup Dynamic Descriptions Schema", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def setup_dynamic_descriptions_schema() -> dict:
+            """Create Neo4j schema (constraints and indexes) for ToolDescription entities."""
+            logger.info("MCP tool: setup_dynamic_descriptions_schema")
+            try:
+                schema_result = await description_manager.setup_schema()
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(schema_result, indent=2))],
+                                  structured_content=schema_result)
+            except Exception as e:
+                logger.error(f"Error setting up dynamic descriptions schema: {e}")
+                raise ToolError(f"Error setting up dynamic descriptions schema: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Seed Initial Tool Descriptions", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=False, 
+                                              openWorldHint=False))
+        async def seed_initial_descriptions(overwrite: bool = False) -> dict:
+            """Seed initial tool descriptions from hardcoded descriptions into Neo4j.
+            
+            Args:
+                overwrite: Whether to overwrite existing descriptions (default: False)
+            """
+            logger.info(f"MCP tool: seed_initial_descriptions (overwrite={overwrite})")
+            try:
+                seed_result = await description_manager.seed_initial_descriptions(overwrite=overwrite)
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(seed_result, indent=2))],
+                                  structured_content=seed_result)
+            except Exception as e:
+                logger.error(f"Error seeding initial descriptions: {e}")
+                raise ToolError(f"Error seeding initial descriptions: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Get Dynamic Descriptions Schema Info", 
+                                              readOnlyHint=True, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def get_dynamic_descriptions_schema_info() -> dict:
+            """Get information about the current Neo4j schema for ToolDescription entities."""
+            logger.info("MCP tool: get_dynamic_descriptions_schema_info")
+            try:
+                schema_info = await description_manager.get_schema_info()
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(schema_info, indent=2))],
+                                  structured_content=schema_info)
+            except Exception as e:
+                logger.error(f"Error getting dynamic descriptions schema info: {e}")
+                raise ToolError(f"Error getting dynamic descriptions schema info: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="List Tool Descriptions", 
+                                              readOnlyHint=True, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def list_tool_descriptions(environment: str = None, tool_name: str = None) -> dict:
+            """List tool descriptions stored in Neo4j.
+            
+            Args:
+                environment: Filter by environment (dev/staging/production). If None, uses current environment.
+                tool_name: Filter by specific tool name. If None, returns all tools.
+            """
+            logger.info(f"MCP tool: list_tool_descriptions (environment={environment}, tool_name={tool_name})")
+            try:
+                descriptions = await description_manager.list_tool_descriptions(environment=environment, tool_name=tool_name)
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(descriptions, indent=2))],
+                                  structured_content=descriptions)
+            except Exception as e:
+                logger.error(f"Error listing tool descriptions: {e}")
+                raise ToolError(f"Error listing tool descriptions: {e}")
+
     return mcp
 
 

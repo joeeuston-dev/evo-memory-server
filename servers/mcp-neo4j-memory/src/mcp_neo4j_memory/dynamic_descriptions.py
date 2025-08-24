@@ -441,3 +441,326 @@ class DynamicToolDescriptionManager:
                 "error": str(e),
                 "fallback_descriptions_count": len(self.fallback_descriptions)
             }
+    
+    # Phase 2: Evo-Memory Integration - Schema Management and Seeding
+    
+    async def setup_schema(self) -> Dict:
+        """
+        Create Neo4j schema (constraints and indexes) for ToolDescription entities.
+        
+        This creates the necessary database schema for storing and efficiently
+        querying tool descriptions with evo-memory patterns.
+        
+        Returns:
+            Dictionary with schema setup results and status
+        """
+        if not self.enabled:
+            return {
+                "status": "skipped",
+                "reason": "Dynamic descriptions disabled",
+                "enabled": False
+            }
+            
+        try:
+            schema_operations = []
+            
+            # Create unique constraint on (tool_name, version, environment)
+            constraint_query = """
+            CREATE CONSTRAINT tool_description_unique IF NOT EXISTS
+            FOR (desc:ToolDescription) 
+            REQUIRE (desc.tool_name, desc.version, desc.environment) IS UNIQUE
+            """
+            
+            result = await self.driver.execute_query(constraint_query)
+            schema_operations.append({
+                "operation": "unique_constraint",
+                "target": "(tool_name, version, environment)",
+                "status": "created"
+            })
+            
+            # Create index on tool_name for fast lookups
+            tool_name_index = """
+            CREATE INDEX tool_description_name_idx IF NOT EXISTS
+            FOR (desc:ToolDescription) ON (desc.tool_name)
+            """
+            
+            await self.driver.execute_query(tool_name_index)
+            schema_operations.append({
+                "operation": "index",
+                "target": "tool_name",
+                "status": "created"
+            })
+            
+            # Create index on environment for environment-specific queries
+            env_index = """
+            CREATE INDEX tool_description_env_idx IF NOT EXISTS
+            FOR (desc:ToolDescription) ON (desc.environment)
+            """
+            
+            await self.driver.execute_query(env_index)
+            schema_operations.append({
+                "operation": "index",
+                "target": "environment", 
+                "status": "created"
+            })
+            
+            # Create index on effectiveness_score for performance optimization
+            effectiveness_index = """
+            CREATE INDEX tool_description_effectiveness_idx IF NOT EXISTS
+            FOR (desc:ToolDescription) ON (desc.effectiveness_score)
+            """
+            
+            await self.driver.execute_query(effectiveness_index)
+            schema_operations.append({
+                "operation": "index",
+                "target": "effectiveness_score",
+                "status": "created"
+            })
+            
+            # Create compound index on (tool_name, environment, status) for main queries
+            compound_index = """
+            CREATE INDEX tool_description_lookup_idx IF NOT EXISTS
+            FOR (desc:ToolDescription) ON (desc.tool_name, desc.environment, desc.status)
+            """
+            
+            await self.driver.execute_query(compound_index)
+            schema_operations.append({
+                "operation": "compound_index",
+                "target": "(tool_name, environment, status)",
+                "status": "created"
+            })
+            
+            logger.info(f"Schema setup completed: {len(schema_operations)} operations")
+            
+            return {
+                "status": "success",
+                "enabled": True,
+                "operations": schema_operations,
+                "total_operations": len(schema_operations)
+            }
+            
+        except Exception as e:
+            logger.error(f"Schema setup failed: {e}")
+            return {
+                "status": "error",
+                "enabled": self.enabled,
+                "error": str(e),
+                "operations": schema_operations if 'schema_operations' in locals() else []
+            }
+    
+    async def seed_initial_descriptions(self, overwrite: bool = False) -> Dict:
+        """
+        Seed initial tool descriptions from hardcoded descriptions.
+        
+        Creates version 1.0 descriptions in Neo4j based on the current hardcoded
+        fallback descriptions, enabling the transition to dynamic descriptions.
+        
+        Args:
+            overwrite: Whether to overwrite existing descriptions
+            
+        Returns:
+            Dictionary with seeding results and created descriptions
+        """
+        if not self.enabled:
+            return {
+                "status": "skipped", 
+                "reason": "Dynamic descriptions disabled",
+                "enabled": False
+            }
+            
+        try:
+            created_descriptions = []
+            skipped_descriptions = []
+            failed_descriptions = []
+            
+            for tool_name, description_text in self.fallback_descriptions.items():
+                try:
+                    # Check if description already exists
+                    existing = await self._check_existing_description(tool_name, "1.0", self.environment)
+                    
+                    if existing and not overwrite:
+                        skipped_descriptions.append({
+                            "tool_name": tool_name,
+                            "reason": "already_exists",
+                            "version": "1.0"
+                        })
+                        continue
+                    
+                    # Create ToolDescriptionModel for this tool
+                    description_model = ToolDescriptionModel(
+                        tool_name=tool_name,
+                        version="1.0",
+                        description=description_text,
+                        environment=self.environment,
+                        created_by="system_seeding",
+                        status="active"
+                    )
+                    
+                    # Create the description in Neo4j
+                    success = await self.create_tool_description(description_model)
+                    
+                    if success:
+                        created_descriptions.append({
+                            "tool_name": tool_name,
+                            "version": "1.0",
+                            "environment": self.environment,
+                            "length": len(description_text)
+                        })
+                        logger.info(f"Seeded description for {tool_name} v1.0")
+                    else:
+                        failed_descriptions.append({
+                            "tool_name": tool_name,
+                            "reason": "creation_failed",
+                            "version": "1.0"
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Failed to seed description for {tool_name}: {e}")
+                    failed_descriptions.append({
+                        "tool_name": tool_name,
+                        "reason": str(e),
+                        "version": "1.0"
+                    })
+            
+            logger.info(f"Seeding completed: {len(created_descriptions)} created, "
+                       f"{len(skipped_descriptions)} skipped, {len(failed_descriptions)} failed")
+            
+            return {
+                "status": "completed",
+                "enabled": True,
+                "created": created_descriptions,
+                "skipped": skipped_descriptions, 
+                "failed": failed_descriptions,
+                "summary": {
+                    "total_tools": len(self.fallback_descriptions),
+                    "created_count": len(created_descriptions),
+                    "skipped_count": len(skipped_descriptions),
+                    "failed_count": len(failed_descriptions)
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Seeding process failed: {e}")
+            return {
+                "status": "error",
+                "enabled": self.enabled,
+                "error": str(e),
+                "created": created_descriptions if 'created_descriptions' in locals() else [],
+                "failed": failed_descriptions if 'failed_descriptions' in locals() else []
+            }
+    
+    async def _check_existing_description(self, tool_name: str, version: str, environment: str) -> bool:
+        """
+        Check if a tool description already exists in Neo4j.
+        
+        Args:
+            tool_name: Name of the tool
+            version: Version of the description
+            environment: Environment (dev/staging/production)
+            
+        Returns:
+            True if description exists, False otherwise
+        """
+        try:
+            query = """
+            MATCH (desc:ToolDescription {
+                tool_name: $tool_name,
+                version: $version,
+                environment: $environment
+            })
+            RETURN count(desc) as count
+            """
+            
+            result = await self.driver.execute_query(
+                query,
+                tool_name=tool_name,
+                version=version,
+                environment=environment
+            )
+            
+            return result.records[0]["count"] > 0
+            
+        except Exception as e:
+            logger.error(f"Error checking existing description for {tool_name}: {e}")
+            return False
+    
+    async def get_schema_info(self) -> Dict:
+        """
+        Get information about the current Neo4j schema for ToolDescription entities.
+        
+        Returns:
+            Dictionary with schema information including constraints and indexes
+        """
+        if not self.enabled:
+            return {
+                "status": "disabled",
+                "enabled": False
+            }
+            
+        try:
+            # Get constraints
+            constraints_query = """
+            SHOW CONSTRAINTS
+            YIELD name, type, entityType, labelsOrTypes, properties
+            WHERE 'ToolDescription' IN labelsOrTypes
+            RETURN name, type, properties
+            """
+            
+            constraints_result = await self.driver.execute_query(constraints_query)
+            constraints = [
+                {
+                    "name": record["name"],
+                    "type": record["type"], 
+                    "properties": record["properties"]
+                }
+                for record in constraints_result.records
+            ]
+            
+            # Get indexes
+            indexes_query = """
+            SHOW INDEXES
+            YIELD name, type, entityType, labelsOrTypes, properties
+            WHERE 'ToolDescription' IN labelsOrTypes
+            RETURN name, type, properties
+            """
+            
+            indexes_result = await self.driver.execute_query(indexes_query)
+            indexes = [
+                {
+                    "name": record["name"],
+                    "type": record["type"],
+                    "properties": record["properties"]
+                }
+                for record in indexes_result.records
+            ]
+            
+            # Get total description count
+            count_query = """
+            MATCH (desc:ToolDescription)
+            RETURN count(desc) as total_descriptions,
+                   count(DISTINCT desc.tool_name) as unique_tools,
+                   count(DISTINCT desc.environment) as environments
+            """
+            
+            count_result = await self.driver.execute_query(count_query)
+            stats = count_result.records[0] if count_result.records else {}
+            
+            return {
+                "status": "success",
+                "enabled": True,
+                "constraints": constraints,
+                "indexes": indexes,
+                "statistics": {
+                    "total_descriptions": stats.get("total_descriptions", 0),
+                    "unique_tools": stats.get("unique_tools", 0),
+                    "environments": stats.get("environments", 0)
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting schema info: {e}")
+            return {
+                "status": "error",
+                "enabled": self.enabled,
+                "error": str(e)
+            }
