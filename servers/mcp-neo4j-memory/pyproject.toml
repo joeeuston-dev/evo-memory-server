@@ -1,7 +1,7 @@
 [project]
-name = "mcp-neo4j-memory"
+name = "evo-memory-server"
 version = "0.3.0"
-description = "MCP Neo4j Knowledge Graph Memory Server"
+description = "Evo-Memory Server - Evolutionary Knowledge Graph with Dynamic Tool Descriptions"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -24,7 +24,10 @@ dev-dependencies = [
 ]
 
 [project.scripts]
-mcp-neo4j-memory = "mcp_neo4j_memory:main"
+evo-memory-server = "mcp_neo4j_memory:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_neo4j_memory"]
 
 [tool.pytest.ini_options]
 pythonpath = [

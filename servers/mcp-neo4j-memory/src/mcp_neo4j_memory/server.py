@@ -428,6 +428,37 @@ def create_mcp_server(memory: Neo4jMemory, description_manager: DynamicToolDescr
                 logger.error(f"Error finding low performing descriptions: {e}")
                 raise ToolError(f"Error finding low performing descriptions: {e}")
 
+        @mcp.tool(annotations=ToolAnnotations(title="Promote Testing Description to Active", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=False, 
+                                              openWorldHint=False))
+        async def promote_testing_to_active(
+            tool_name: str = Field(..., description="Name of the tool"),
+            version: str = Field(..., description="Version to promote"),
+            promoted_by: str = Field(default="user", description="Who is promoting this description")
+        ) -> dict:
+            """Promote a testing tool description to active status."""
+            logger.info(f"MCP tool: promote_testing_to_active for {tool_name} v{version}")
+            try:
+                result = await description_manager.promote_testing_to_active(
+                    tool_name=tool_name,
+                    version=version,
+                    promoted_by=promoted_by
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error promoting description: {e}")
+                raise ToolError(f"Error promoting description: {e}")
+
+    # TODO: Dynamic description integration will be implemented as a post-startup process
+    # Currently disabled to prevent server startup hanging on Neo4j connection
+    if description_manager and description_manager.enabled:
+        logger.info("Dynamic descriptions enabled - integration will be implemented post-startup")
+    else:
+        logger.info("Dynamic descriptions disabled - using hardcoded descriptions")
+
     return mcp
 
 

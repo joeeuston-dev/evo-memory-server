@@ -1430,3 +1430,178 @@ class DynamicToolDescriptionManager:
                 "error": str(e),
                 "environment": target_environment
             }
+
+    async def promote_testing_to_active(
+        self,
+        tool_name: str,
+        version: str,
+        promoted_by: str = "system",
+        environment: Optional[str] = None
+    ) -> Dict:
+        """
+        Promote a testing tool description to active status.
+        
+        Enables moving successful testing descriptions into production use,
+        supporting the lifecycle from testing -> active for enhanced descriptions.
+        
+        Args:
+            tool_name: Name of the tool
+            version: Version to promote
+            promoted_by: Who is promoting this description
+            environment: Environment (defaults to manager environment)
+            
+        Returns:
+            Dict with promotion status and metadata
+        """
+        target_environment = environment or self.environment
+        
+        try:
+            # Check if the description exists and is in testing status
+            check_query = """
+            MATCH (desc:ToolDescription {
+                tool_name: $tool_name,
+                version: $version,
+                environment: $environment
+            })
+            RETURN desc.status as current_status,
+                   desc.created_at as created_at,
+                   desc.effectiveness_score as effectiveness_score
+            """
+            
+            check_result = await self.driver.execute_query(
+                check_query,
+                tool_name=tool_name,
+                version=version,
+                environment=target_environment
+            )
+            
+            if not check_result.records:
+                return {
+                    "status": "error",
+                    "error": f"Description {tool_name} v{version} not found",
+                    "environment": target_environment
+                }
+            
+            current_status = check_result.records[0]["current_status"]
+            if current_status != "testing":
+                return {
+                    "status": "error",
+                    "error": f"Description {tool_name} v{version} is '{current_status}', not 'testing'",
+                    "current_status": current_status,
+                    "environment": target_environment
+                }
+            
+            # Promote the description to active status
+            promote_query = """
+            MATCH (desc:ToolDescription {
+                tool_name: $tool_name,
+                version: $version,
+                environment: $environment,
+                status: 'testing'
+            })
+            SET desc.status = 'active',
+                desc.promoted_at = datetime(),
+                desc.promoted_by = $promoted_by
+            RETURN desc.promoted_at as promoted_at,
+                   desc.effectiveness_score as current_score
+            """
+            
+            result = await self.driver.execute_query(
+                promote_query,
+                tool_name=tool_name,
+                version=version,
+                environment=target_environment,
+                promoted_by=promoted_by
+            )
+            
+            logger.info(f"Promoted description {tool_name} v{version} from testing to active")
+            
+            return {
+                "status": "promoted",
+                "enabled": True,
+                "tool_name": tool_name,
+                "version": version,
+                "environment": target_environment,
+                "promoted_by": promoted_by,
+                "promoted_at": result.records[0]["promoted_at"].isoformat(),
+                "current_effectiveness_score": result.records[0]["current_score"],
+                "previous_status": "testing"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error promoting description {tool_name} v{version}: {e}")
+            return {
+                "status": "error",
+                "enabled": self.enabled,
+                "error": str(e),
+                "environment": target_environment
+            }
+    
+    async def promote_testing_to_active(self, tool_name: str, version: str, promoted_by: str = "user") -> dict:
+        """
+        Promote a testing tool description to active status.
+        
+        Args:
+            tool_name: Name of the tool
+            version: Version to promote
+            promoted_by: Who is promoting this description
+            
+        Returns:
+            Dictionary with promotion result
+        """
+        try:
+            query = """
+            MATCH (desc:ToolDescription {
+                tool_name: $tool_name,
+                version: $version,
+                environment: $environment,
+                status: 'testing'
+            })
+            SET desc.status = 'active',
+                desc.last_accessed = datetime(),
+                desc.promoted_at = datetime(),
+                desc.promoted_by = $promoted_by
+            RETURN desc.tool_name as tool_name, 
+                   desc.version as version,
+                   desc.status as status
+            """
+            
+            result = await self.driver.execute_query(
+                query,
+                tool_name=tool_name,
+                version=version,
+                environment=self.environment,
+                promoted_by=promoted_by
+            )
+            
+            if result.records:
+                logger.info(f"Promoted {tool_name} v{version} from testing to active")
+                return {
+                    "status": "promoted",
+                    "enabled": self.enabled,
+                    "tool_name": tool_name,
+                    "version": version,
+                    "new_status": "active",
+                    "promoted_by": promoted_by,
+                    "environment": self.environment
+                }
+            else:
+                return {
+                    "status": "not_found",
+                    "enabled": self.enabled,
+                    "tool_name": tool_name,
+                    "version": version,
+                    "error": "No testing description found with specified parameters",
+                    "environment": self.environment
+                }
+                
+        except Exception as e:
+            logger.error(f"Error promoting {tool_name} v{version} to active: {e}")
+            return {
+                "status": "error",
+                "enabled": self.enabled,
+                "error": str(e),
+                "tool_name": tool_name,
+                "version": version,
+                "environment": self.environment
+            }
