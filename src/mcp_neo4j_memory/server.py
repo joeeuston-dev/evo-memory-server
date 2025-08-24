@@ -48,7 +48,7 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
                                           idempotentHint=True, 
                                           openWorldHint=True))
     async def create_entities(entities: list[Entity] = Field(..., description="List of entities to create")) -> list[Entity]:
-        """**KNOWLEDGE CREATION TOOL**: Create new entities with brain-inspired metadata (access_count, confidence, created timestamp). Always include brain metadata and meaningful observations. WHEN TO USE: Learning new concepts, storing insights, capturing project knowledge. Include relationships to existing entities for knowledge integration."""
+        """**KNOWLEDGE CREATION TOOL**: Create new entities with evo metadata (access_count, confidence, created timestamp). Always include evo metadata and meaningful observations. WHEN TO USE: Learning new concepts, storing insights, capturing project knowledge. Include relationships to existing entities for knowledge integration."""
         logger.info(f"MCP tool: create_entities ({len(entities)} entities)")
         try:
             entity_objects = [Entity.model_validate(entity) for entity in entities]
@@ -68,7 +68,7 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
                                           idempotentHint=True, 
                                           openWorldHint=True))
     async def create_relations(relations: list[Relation] = Field(..., description="List of relations to create")) -> list[Relation]:
-        """**SYNAPTIC STRENGTHENING TOOL**: Create relationships between entities to enable knowledge discovery through traversal. Essential for brain-inspired memory patterns. WHEN TO USE: After creating entities, when discovering connections, building knowledge networks. Relationship types: part_of, implements, validates, coordinates_with, etc."""
+        """**EVO STRENGTHENING TOOL**: Create relationships between entities to enable knowledge discovery through traversal. Essential for evo-memory patterns. WHEN TO USE: After creating entities, when discovering connections, building knowledge networks. Relationship types: part_of, implements, validates, coordinates_with, etc."""
         logger.info(f"MCP tool: create_relations ({len(relations)} relations)")
         try:
             relation_objects = [Relation.model_validate(relation) for relation in relations]
@@ -88,7 +88,7 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
                                           idempotentHint=True, 
                                           openWorldHint=True))
     async def add_observations(observations: list[ObservationAddition] = Field(..., description="List of observations to add")) -> list[dict[str, str | list[str]]]:
-        """**MEMORY CONSOLIDATION TOOL**: Add new insights to existing entities, simulating memory strengthening. Update brain metadata (increment access_count, update last_accessed). WHEN TO USE: Learning new details about existing concepts, consolidating session insights, updating project status."""
+        """**EVO CONSOLIDATION TOOL**: Add new insights to existing entities, simulating evo strengthening. Update evo metadata (increment access_count, update last_accessed). WHEN TO USE: Learning new details about existing concepts, consolidating session insights, updating project status."""
         logger.info(f"MCP tool: add_observations ({len(observations)} additions)")
         try:
             observation_objects = [ObservationAddition.model_validate(obs) for obs in observations]
@@ -167,7 +167,7 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
                                           idempotentHint=True, 
                                           openWorldHint=True))
     async def search_memories(query: str = Field(..., description="Search query for nodes")) -> KnowledgeGraph:
-        """**PRIMARY DISCOVERY TOOL**: Use this FIRST when user asks about past work, concepts, or relationships. Performs brain-inspired discovery through relationship traversal and semantic search rather than full graph reads. Triggers synaptic strengthening on accessed knowledge. WHEN TO USE: 'What did we work on yesterday?', 'Tell me about X', 'How does Y relate to Z?', 'What do I know about...?'"""
+        """**PRIMARY DISCOVERY TOOL**: Use this FIRST when user asks about past work, concepts, or relationships. Performs evo-memory discovery through relationship traversal and semantic search rather than full graph reads. Triggers evo strengthening on accessed knowledge. WHEN TO USE: 'What did we work on yesterday?', 'Tell me about X', 'How does Y relate to Z?', 'What do I know about...?'"""
         logger.info(f"MCP tool: search_memories ('{query}')")
         try:
             result = await memory.search_memories(query)
@@ -186,7 +186,7 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
                                           idempotentHint=True, 
                                           openWorldHint=True))
     async def find_memories_by_name(names: list[str] = Field(..., description="List of node names to find")) -> KnowledgeGraph:
-        """**DIRECT ACCESS TOOL**: Find specific entities by exact name when you know what you're looking for. More efficient than search_memories for known entity names. WHEN TO USE: Accessing specific projects, methodologies, or entities by name. Triggers synaptic strengthening on accessed entities."""
+        """**DIRECT ACCESS TOOL**: Find specific entities by exact name when you know what you're looking for. More efficient than search_memories for known entity names. WHEN TO USE: Accessing specific projects, methodologies, or entities by name. Triggers evo strengthening on accessed entities."""
         logger.info(f"MCP tool: find_memories_by_name ({len(names)} names)")
         try:
             result = await memory.find_memories_by_name(names)
