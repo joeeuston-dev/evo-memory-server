@@ -20,6 +20,12 @@ def main():
     parser.add_argument("--server-port", type=int, default=None, help="HTTP port (default: 8000)")
     parser.add_argument("--server-path", default=None, help="HTTP path (default: /mcp/)")
     
+    # Dynamic descriptions configuration
+    parser.add_argument("--dynamic-descriptions", action="store_true", 
+                       help="Enable dynamic tool descriptions from Neo4j")
+    parser.add_argument("--description-environment", default=None, 
+                       help="Environment for description selection (dev/staging/production)")
+    
     args = parser.parse_args()
     config = process_config(args)
     asyncio.run(server.main(**config))

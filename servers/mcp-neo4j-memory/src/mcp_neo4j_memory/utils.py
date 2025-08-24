@@ -129,4 +129,35 @@ def process_config(args: argparse.Namespace) -> dict[str, Union[str, int, None]]
             logger.info("Info: No server path provided and transport is `stdio`. `server_path` will be None.")
             config["path"] = None
     
+    # Dynamic descriptions configuration
+    
+    # Parse dynamic descriptions enabled flag
+    if hasattr(args, 'dynamic_descriptions') and args.dynamic_descriptions is not None:
+        config["dynamic_descriptions_enabled"] = args.dynamic_descriptions
+    else:
+        env_value = os.getenv("DYNAMIC_DESCRIPTIONS_ENABLED", "false").lower()
+        config["dynamic_descriptions_enabled"] = env_value in ("true", "1", "yes", "on")
+    
+    # Parse description environment
+    if hasattr(args, 'description_environment') and args.description_environment is not None:
+        config["description_environment"] = args.description_environment
+    else:
+        config["description_environment"] = os.getenv("DESCRIPTION_ENVIRONMENT", "production")
+    
+    # Parse effectiveness threshold
+    effectiveness_threshold_str = os.getenv("EFFECTIVENESS_THRESHOLD", "0.75")
+    try:
+        config["effectiveness_threshold"] = float(effectiveness_threshold_str)
+    except ValueError:
+        logger.warning(f"Warning: Invalid effectiveness threshold '{effectiveness_threshold_str}'. Using default: 0.75")
+        config["effectiveness_threshold"] = 0.75
+    
+    # Parse A/B testing probability
+    ab_test_prob_str = os.getenv("AB_TEST_PROBABILITY", "0.1")
+    try:
+        config["ab_test_probability"] = float(ab_test_prob_str)
+    except ValueError:
+        logger.warning(f"Warning: Invalid A/B test probability '{ab_test_prob_str}'. Using default: 0.1")
+        config["ab_test_probability"] = 0.1
+
     return config
