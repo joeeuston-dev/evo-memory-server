@@ -12,13 +12,14 @@ from neo4j.exceptions import Neo4jError
 from mcp.types import ToolAnnotations
 
 from .neo4j_memory import Neo4jMemory, Entity, Relation, ObservationAddition, ObservationDeletion, KnowledgeGraph
+from .dynamic_descriptions import DynamicToolDescriptionManager
 
 # Set up logging
 logger = logging.getLogger('mcp_neo4j_memory')
 logger.setLevel(logging.INFO)
 
 
-def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
+def create_mcp_server(memory: Neo4jMemory, description_manager: DynamicToolDescriptionManager = None) -> FastMCP:
     """Create an MCP server instance for memory management."""
     
     mcp: FastMCP = FastMCP("mcp-neo4j-memory", dependencies=["neo4j", "pydantic"], stateless_http=True)
@@ -198,6 +199,24 @@ def create_mcp_server(memory: Neo4jMemory) -> FastMCP:
         except Exception as e:
             logger.error(f"Error finding memories by name: {e}")
             raise ToolError(f"Error finding memories by name: {e}")
+    
+    # Add health check tool for dynamic descriptions (if available)
+    if description_manager:
+        @mcp.tool(annotations=ToolAnnotations(title="Dynamic Descriptions Health Check", 
+                                              readOnlyHint=True, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def dynamic_descriptions_health() -> dict:
+            """Check the health status of the dynamic descriptions system."""
+            logger.info("MCP tool: dynamic_descriptions_health")
+            try:
+                health_status = await description_manager.health_check()
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(health_status, indent=2))],
+                                  structured_content=health_status)
+            except Exception as e:
+                logger.error(f"Error checking dynamic descriptions health: {e}")
+                raise ToolError(f"Error checking dynamic descriptions health: {e}")
 
     return mcp
 
@@ -211,6 +230,10 @@ async def main(
     host: str = "127.0.0.1",
     port: int = 8000,
     path: str = "/mcp/",
+    dynamic_descriptions_enabled: bool = False,
+    description_environment: str = "production",
+    effectiveness_threshold: float = 0.75,
+    ab_test_probability: float = 0.1,
 ) -> None:
     logger.info(f"Starting Neo4j MCP Memory Server")
     logger.info(f"Connecting to Neo4j with DB URL: {neo4j_uri}")
@@ -234,11 +257,19 @@ async def main(
     memory = Neo4jMemory(neo4j_driver)
     logger.info("Neo4jMemory initialized")
     
+    # Initialize dynamic descriptions manager
+    description_manager = DynamicToolDescriptionManager(
+        driver=neo4j_driver,
+        enabled=dynamic_descriptions_enabled,
+        environment=description_environment
+    )
+    logger.info(f"DynamicToolDescriptionManager initialized (enabled={dynamic_descriptions_enabled})")
+    
     # Create fulltext index
     await memory.create_fulltext_index()
     
     # Create MCP server
-    mcp = create_mcp_server(memory)
+    mcp = create_mcp_server(memory, description_manager)
     logger.info("MCP server created")
 
     # Run the server with the specified transport
