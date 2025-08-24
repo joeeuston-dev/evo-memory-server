@@ -286,8 +286,10 @@ def create_mcp_server(memory: Neo4jMemory, description_manager: DynamicToolDescr
             logger.info(f"MCP tool: list_tool_descriptions (environment={environment}, tool_name={tool_name})")
             try:
                 descriptions = await description_manager.list_tool_descriptions(environment=environment, tool_name=tool_name)
+                # Wrap list in dictionary for structured_content compliance
+                structured_data = {"descriptions": descriptions, "count": len(descriptions)}
                 return ToolResult(content=[TextContent(type="text", text=json.dumps(descriptions, indent=2))],
-                                  structured_content=descriptions)
+                                  structured_content=structured_data)
             except Exception as e:
                 logger.error(f"Error listing tool descriptions: {e}")
                 raise ToolError(f"Error listing tool descriptions: {e}")
