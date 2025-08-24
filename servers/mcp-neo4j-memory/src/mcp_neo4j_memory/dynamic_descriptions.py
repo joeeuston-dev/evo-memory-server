@@ -307,7 +307,16 @@ class DynamicToolDescriptionManager:
             """
             
             result = await self.driver.execute_query(query, **params)
-            descriptions = [dict(record) for record in result.records]
+            
+            descriptions = []
+            for record in result.records:
+                desc = dict(record)
+                # Convert datetime objects to ISO format for JSON serialization
+                if desc.get("created"):
+                    desc["created"] = desc["created"].isoformat()
+                if desc.get("last_accessed"):
+                    desc["last_accessed"] = desc["last_accessed"].isoformat()
+                descriptions.append(desc)
             
             logger.debug(f"Listed {len(descriptions)} tool descriptions")
             return descriptions
@@ -1203,7 +1212,7 @@ class DynamicToolDescriptionManager:
                    desc.deprecated_at as deprecated_at,
                    desc.deprecation_reason as deprecation_reason,
                    desc.reactivated_at as reactivated_at,
-                   LENGTH(desc.description) as description_length
+                   size(desc.description) as description_length
             ORDER BY desc.created DESC
             """
             
