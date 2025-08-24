@@ -292,6 +292,140 @@ def create_mcp_server(memory: Neo4jMemory, description_manager: DynamicToolDescr
                 logger.error(f"Error listing tool descriptions: {e}")
                 raise ToolError(f"Error listing tool descriptions: {e}")
 
+        # Phase 3: Description Lifecycle Management Tools
+        
+        @mcp.tool(annotations=ToolAnnotations(title="Mark Dynamic Description Deprecated", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def mark_dynamic_description_deprecated(
+            tool_name: str = Field(..., description="Name of the tool"),
+            version: str = Field(..., description="Version to deprecate"),
+            reason: str = Field(..., description="Reason for deprecation"),
+            deprecated_by: str = Field(default="user", description="Who is deprecating this description"),
+            environment: str = Field(default=None, description="Environment (defaults to manager environment)")
+        ) -> dict:
+            """Mark a tool description as deprecated with reason tracking."""
+            logger.info(f"MCP tool: mark_dynamic_description_deprecated ({tool_name} v{version})")
+            try:
+                result = await description_manager.mark_tool_description_deprecated(
+                    tool_name=tool_name,
+                    version=version,
+                    reason=reason,
+                    deprecated_by=deprecated_by,
+                    environment=environment
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error marking description deprecated: {e}")
+                raise ToolError(f"Error marking description deprecated: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Reactivate Dynamic Description", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def reactivate_dynamic_description(
+            tool_name: str = Field(..., description="Name of the tool"),
+            version: str = Field(..., description="Version to reactivate"),
+            reactivated_by: str = Field(default="user", description="Who is reactivating this description"),
+            environment: str = Field(default=None, description="Environment (defaults to manager environment)")
+        ) -> dict:
+            """Reactivate a deprecated tool description."""
+            logger.info(f"MCP tool: reactivate_dynamic_description ({tool_name} v{version})")
+            try:
+                result = await description_manager.reactivate_tool_description(
+                    tool_name=tool_name,
+                    version=version,
+                    reactivated_by=reactivated_by,
+                    environment=environment
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error reactivating description: {e}")
+                raise ToolError(f"Error reactivating description: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Create Description Version", 
+                                              readOnlyHint=False, 
+                                              destructiveHint=False, 
+                                              idempotentHint=False, 
+                                              openWorldHint=False))
+        async def create_description_version(
+            tool_name: str = Field(..., description="Name of the tool"),
+            base_version: str = Field(..., description="Version to base the new version on"),
+            new_version: str = Field(..., description="Version identifier for the new description"),
+            new_description: str = Field(..., description="The new description text"),
+            created_by: str = Field(default="user", description="Who is creating this version"),
+            environment: str = Field(default=None, description="Environment (defaults to manager environment)")
+        ) -> dict:
+            """Create a new version of a tool description based on an existing one."""
+            logger.info(f"MCP tool: create_description_version ({tool_name} v{base_version} -> v{new_version})")
+            try:
+                result = await description_manager.create_description_version(
+                    tool_name=tool_name,
+                    base_version=base_version,
+                    new_version=new_version,
+                    new_description=new_description,
+                    created_by=created_by,
+                    environment=environment
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error creating description version: {e}")
+                raise ToolError(f"Error creating description version: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Get Description Versions", 
+                                              readOnlyHint=True, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def get_description_versions(
+            tool_name: str = Field(..., description="Name of the tool"),
+            environment: str = Field(default=None, description="Environment (defaults to manager environment)"),
+            include_deprecated: bool = Field(default=True, description="Whether to include deprecated versions")
+        ) -> dict:
+            """Get all versions of a tool description with their status and metrics."""
+            logger.info(f"MCP tool: get_description_versions ({tool_name})")
+            try:
+                result = await description_manager.get_description_versions(
+                    tool_name=tool_name,
+                    environment=environment,
+                    include_deprecated=include_deprecated
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error getting description versions: {e}")
+                raise ToolError(f"Error getting description versions: {e}")
+
+        @mcp.tool(annotations=ToolAnnotations(title="Find Low Performing Descriptions", 
+                                              readOnlyHint=True, 
+                                              destructiveHint=False, 
+                                              idempotentHint=True, 
+                                              openWorldHint=False))
+        async def find_low_performing_descriptions(
+            effectiveness_threshold: float = Field(default=0.3, description="Minimum effectiveness score"),
+            access_threshold: int = Field(default=5, description="Minimum access count to consider"),
+            environment: str = Field(default=None, description="Environment (defaults to manager environment)")
+        ) -> dict:
+            """Find descriptions that are performing below thresholds and may need deprecation."""
+            logger.info(f"MCP tool: find_low_performing_descriptions (threshold={effectiveness_threshold})")
+            try:
+                result = await description_manager.find_low_performing_descriptions(
+                    effectiveness_threshold=effectiveness_threshold,
+                    access_threshold=access_threshold,
+                    environment=environment
+                )
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+                                  structured_content=result)
+            except Exception as e:
+                logger.error(f"Error finding low performing descriptions: {e}")
+                raise ToolError(f"Error finding low performing descriptions: {e}")
+
     return mcp
 
 

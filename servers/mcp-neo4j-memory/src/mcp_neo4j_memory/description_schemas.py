@@ -33,6 +33,16 @@ class ToolDescriptionModel(BaseModel):
                             description="Environment this description is for (dev/staging/production)")
     created_by: Optional[str] = Field(default=None, 
                                      description="Who created this description")
+    deprecated_at: Optional[datetime] = Field(default=None,
+                                            description="When this description was deprecated")
+    deprecated_by: Optional[str] = Field(default=None,
+                                       description="Who deprecated this description")
+    deprecation_reason: Optional[str] = Field(default=None,
+                                            description="Reason for deprecation")
+    reactivated_at: Optional[datetime] = Field(default=None,
+                                             description="When this description was last reactivated")
+    reactivated_by: Optional[str] = Field(default=None,
+                                        description="Who reactivated this description")
     
     class Config:
         """Pydantic configuration."""

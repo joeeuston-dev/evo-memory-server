@@ -676,6 +676,364 @@ class TestPhase2Seeding:
         assert exists is False
 
 
+class TestPhase3LifecycleManagement:
+    """Test Phase 3: Description Lifecycle Management methods."""
+    
+    @pytest.fixture
+    def mock_manager(self):
+        """Create a mock manager for Phase 3 tests."""
+        mock_driver = AsyncMock()
+        manager = DynamicToolDescriptionManager(mock_driver, enabled=True, environment="test")
+        return manager, mock_driver
+    
+    # Test deprecation functionality
+    
+    @pytest.mark.asyncio
+    async def test_mark_description_deprecated_disabled(self):
+        """Test deprecation when manager is disabled."""
+        mock_driver = AsyncMock()
+        manager = DynamicToolDescriptionManager(mock_driver, enabled=False)
+        
+        result = await manager.mark_tool_description_deprecated(
+            "test_tool", "1.0", "ineffective"
+        )
+        
+        assert result["status"] == "skipped"
+        assert result["reason"] == "Dynamic descriptions disabled"
+        assert not result["enabled"]
+        mock_driver.execute_query.assert_not_called()
+    
+    @pytest.mark.asyncio
+    async def test_mark_description_deprecated_success(self, mock_manager):
+        """Test successful description deprecation."""
+        manager, mock_driver = mock_manager
+        
+        # Mock check query result - description exists and is active
+        check_result = MagicMock()
+        check_result.records = [{"current_status": "active", "deprecated_at": None}]
+        
+        # Mock deprecate query result
+        deprecate_result = MagicMock()
+        deprecate_result.records = [{
+            "deprecated_at": datetime.now(),
+            "final_score": 0.4
+        }]
+        
+        mock_driver.execute_query.side_effect = [check_result, deprecate_result]
+        
+        result = await manager.mark_tool_description_deprecated(
+            "test_tool", "1.0", "ineffective", "test_user"
+        )
+        
+        assert result["status"] == "deprecated"
+        assert result["tool_name"] == "test_tool"
+        assert result["version"] == "1.0"
+        assert result["reason"] == "ineffective"
+        assert result["deprecated_by"] == "test_user"
+        assert result["final_effectiveness_score"] == 0.4
+        assert mock_driver.execute_query.call_count == 2
+    
+    @pytest.mark.asyncio
+    async def test_mark_description_deprecated_not_found(self, mock_manager):
+        """Test deprecation when description doesn't exist."""
+        manager, mock_driver = mock_manager
+        
+        # Mock empty result
+        check_result = MagicMock()
+        check_result.records = []
+        mock_driver.execute_query.return_value = check_result
+        
+        result = await manager.mark_tool_description_deprecated(
+            "nonexistent_tool", "1.0", "ineffective"
+        )
+        
+        assert result["status"] == "not_found"
+        assert result["tool_name"] == "nonexistent_tool"
+        assert result["version"] == "1.0"
+        assert mock_driver.execute_query.call_count == 1
+    
+    @pytest.mark.asyncio
+    async def test_mark_description_deprecated_already_deprecated(self, mock_manager):
+        """Test deprecation when description is already deprecated."""
+        manager, mock_driver = mock_manager
+        
+        deprecated_time = datetime.now()
+        check_result = MagicMock()
+        check_result.records = [{
+            "current_status": "deprecated", 
+            "deprecated_at": deprecated_time
+        }]
+        mock_driver.execute_query.return_value = check_result
+        
+        result = await manager.mark_tool_description_deprecated(
+            "test_tool", "1.0", "ineffective"
+        )
+        
+        assert result["status"] == "already_deprecated"
+        assert result["deprecated_at"] == deprecated_time
+        assert mock_driver.execute_query.call_count == 1
+    
+    # Test reactivation functionality
+    
+    @pytest.mark.asyncio
+    async def test_reactivate_description_success(self, mock_manager):
+        """Test successful description reactivation."""
+        manager, mock_driver = mock_manager
+        
+        # Mock check query result - description exists and is deprecated
+        check_result = MagicMock()
+        check_result.records = [{
+            "current_status": "deprecated",
+            "deprecated_at": datetime.now(),
+            "deprecation_reason": "ineffective"
+        }]
+        
+        # Mock reactivate query result
+        reactivate_result = MagicMock()
+        reactivate_result.records = [{
+            "reactivated_at": datetime.now(),
+            "current_score": 0.6
+        }]
+        
+        mock_driver.execute_query.side_effect = [check_result, reactivate_result]
+        
+        result = await manager.reactivate_tool_description(
+            "test_tool", "1.0", "test_user"
+        )
+        
+        assert result["status"] == "reactivated"
+        assert result["tool_name"] == "test_tool"
+        assert result["version"] == "1.0"
+        assert result["reactivated_by"] == "test_user"
+        assert result["current_effectiveness_score"] == 0.6
+        assert result["previous_deprecation_reason"] == "ineffective"
+        assert mock_driver.execute_query.call_count == 2
+    
+    @pytest.mark.asyncio
+    async def test_reactivate_description_not_deprecated(self, mock_manager):
+        """Test reactivation when description is not deprecated."""
+        manager, mock_driver = mock_manager
+        
+        check_result = MagicMock()
+        check_result.records = [{"current_status": "active"}]
+        mock_driver.execute_query.return_value = check_result
+        
+        result = await manager.reactivate_tool_description("test_tool", "1.0")
+        
+        assert result["status"] == "not_deprecated"
+        assert result["current_status"] == "active"
+        assert mock_driver.execute_query.call_count == 1
+    
+    # Test version creation functionality
+    
+    @pytest.mark.asyncio
+    async def test_create_description_version_success(self, mock_manager):
+        """Test successful version creation."""
+        manager, mock_driver = mock_manager
+        
+        # Mock base check result
+        base_result = MagicMock()
+        base_result.records = [{
+            "base_score": 0.7,
+            "base_description": "Original description"
+        }]
+        
+        # Mock existing check (private method result)
+        manager._check_existing_description = AsyncMock(return_value=False)
+        
+        # Mock create_tool_description success
+        manager.create_tool_description = AsyncMock(return_value=True)
+        
+        # Mock evolution query
+        evolution_result = MagicMock()
+        evolution_result.records = [{"new_created": datetime.now()}]
+        
+        mock_driver.execute_query.side_effect = [base_result, evolution_result]
+        
+        result = await manager.create_description_version(
+            "test_tool", "1.0", "2.0", "Improved description", "test_user"
+        )
+        
+        assert result["status"] == "created"
+        assert result["tool_name"] == "test_tool"
+        assert result["base_version"] == "1.0"
+        assert result["new_version"] == "2.0"
+        assert result["created_by"] == "test_user"
+        assert result["base_effectiveness_score"] == 0.7
+    
+    @pytest.mark.asyncio
+    async def test_create_description_version_base_not_found(self, mock_manager):
+        """Test version creation when base version doesn't exist."""
+        manager, mock_driver = mock_manager
+        
+        base_result = MagicMock()
+        base_result.records = []
+        mock_driver.execute_query.return_value = base_result
+        
+        result = await manager.create_description_version(
+            "test_tool", "1.0", "2.0", "New description"
+        )
+        
+        assert result["status"] == "base_not_found"
+        assert result["base_version"] == "1.0"
+    
+    @pytest.mark.asyncio 
+    async def test_create_description_version_already_exists(self, mock_manager):
+        """Test version creation when new version already exists."""
+        manager, mock_driver = mock_manager
+        
+        # Mock base exists
+        base_result = MagicMock()
+        base_result.records = [{"base_score": 0.7}]
+        
+        # Mock new version already exists
+        manager._check_existing_description = AsyncMock(return_value=True)
+        
+        mock_driver.execute_query.return_value = base_result
+        
+        result = await manager.create_description_version(
+            "test_tool", "1.0", "2.0", "New description"
+        )
+        
+        assert result["status"] == "version_exists"
+        assert result["new_version"] == "2.0"
+    
+    # Test version listing functionality
+    
+    @pytest.mark.asyncio
+    async def test_get_description_versions_success(self, mock_manager):
+        """Test successful version listing."""
+        manager, mock_driver = mock_manager
+        
+        now = datetime.now()
+        
+        # Mock versions query result
+        versions_result = MagicMock()
+        versions_result.records = [
+            {
+                "version": "2.0",
+                "status": "active",
+                "effectiveness_score": 0.8,
+                "access_count": 15,
+                "confidence": 0.9,
+                "created": now,
+                "last_accessed": now,
+                "created_by": "user1",
+                "deprecated_at": None,
+                "deprecation_reason": None,
+                "reactivated_at": None,
+                "description_length": 100
+            },
+            {
+                "version": "1.0",
+                "status": "deprecated",
+                "effectiveness_score": 0.3,
+                "access_count": 5,
+                "confidence": 0.4,
+                "created": now,
+                "last_accessed": now,
+                "created_by": "system",
+                "deprecated_at": now,
+                "deprecation_reason": "ineffective",
+                "reactivated_at": None,
+                "description_length": 80
+            }
+        ]
+        
+        # Mock evolution query result
+        evolution_result = MagicMock()
+        evolution_result.records = [{
+            "from_version": "1.0",
+            "to_version": "2.0",
+            "evolution_type": "version_evolution",
+            "evolution_created": now,
+            "evolution_created_by": "user1"
+        }]
+        
+        mock_driver.execute_query.side_effect = [versions_result, evolution_result]
+        
+        result = await manager.get_description_versions("test_tool")
+        
+        assert result["status"] == "success"
+        assert result["tool_name"] == "test_tool"
+        assert len(result["versions"]) == 2
+        assert len(result["evolutions"]) == 1
+        assert result["summary"]["total_versions"] == 2
+        assert result["summary"]["active_versions"] == 1
+        assert result["summary"]["deprecated_versions"] == 1
+        
+        # Check version details
+        active_version = next(v for v in result["versions"] if v["status"] == "active")
+        assert active_version["version"] == "2.0"
+        assert active_version["effectiveness_score"] == 0.8
+        
+        deprecated_version = next(v for v in result["versions"] if v["status"] == "deprecated")
+        assert deprecated_version["deprecation_reason"] == "ineffective"
+    
+    # Test analytics functionality
+    
+    @pytest.mark.asyncio
+    async def test_find_low_performing_descriptions_success(self, mock_manager):
+        """Test finding low performing descriptions."""
+        manager, mock_driver = mock_manager
+        
+        now = datetime.now()
+        
+        # Mock low performing query result
+        low_perf_result = MagicMock()
+        low_perf_result.records = [
+            {
+                "tool_name": "bad_tool",
+                "version": "1.0",
+                "effectiveness_score": 0.05,
+                "access_count": 10,
+                "confidence": 0.3,
+                "created": now,
+                "last_accessed": now,
+                "created_by": "system"
+            },
+            {
+                "tool_name": "mediocre_tool",
+                "version": "1.0", 
+                "effectiveness_score": 0.25,
+                "access_count": 8,
+                "confidence": 0.5,
+                "created": now,
+                "last_accessed": now,
+                "created_by": "user1"
+            }
+        ]
+        
+        # Mock summary query result
+        summary_result = MagicMock()
+        summary_result.records = [{
+            "total_active": 10,
+            "avg_effectiveness": 0.65,
+            "below_threshold": 3,
+            "sufficient_usage": 8
+        }]
+        
+        mock_driver.execute_query.side_effect = [low_perf_result, summary_result]
+        
+        result = await manager.find_low_performing_descriptions(
+            effectiveness_threshold=0.3, access_threshold=5
+        )
+        
+        assert result["status"] == "success"
+        assert len(result["low_performing_descriptions"]) == 2
+        assert result["summary"]["total_active_descriptions"] == 10
+        assert result["summary"]["average_effectiveness"] == 0.65
+        assert result["recommendations"]["immediate_deprecation"] == 1  # score < 0.1
+        assert result["recommendations"]["monitor_closely"] == 1  # score 0.2-0.3
+        
+        # Check recommendations
+        bad_desc = next(d for d in result["low_performing_descriptions"] if d["tool_name"] == "bad_tool")
+        assert bad_desc["recommendation"] == "immediate_deprecation"
+        
+        mediocre_desc = next(d for d in result["low_performing_descriptions"] if d["tool_name"] == "mediocre_tool")
+        assert mediocre_desc["recommendation"] == "monitor_closely"
+
+
 class TestIntegration:
     """Integration tests requiring real Neo4j instance."""
     
