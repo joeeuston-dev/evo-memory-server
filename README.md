@@ -1,84 +1,61 @@
-# Neo4j MCP Clients & Servers
+# Evo-Memory Server
 
-Model Context Protocol (MCP) is a [standardized protocol](https://modelcontextprotocol.io/introduction) for managing context between large language models (LLMs) and external systems. 
+A fork of [neo4j-contrib/mcp-neo4j](https://github.com/neo4j-contrib/mcp-neo4j) enhanced with intent-guided tool descriptions for evo-memory patterns.
 
-This lets you use Claude Desktop, or any other MCP Client (VS Code, Cursor, Windsurf), to use natural language to accomplish things with Neo4j and your Aura account, e.g.:
+## Enhancements
 
-* What is in this graph?
-* Render a chart from the top products sold by frequency, total and average volume
-* List my instances
-* Create a new instance named mcp-test for Aura Professional with 4GB and Graph Data Science enabled
-* Store the fact that I worked on the Neo4j MCP Servers today with Andreas and Oskar
+### Intent-Guided Tool Descriptions
+Each tool now includes detailed guidance on WHEN and HOW to use it, enabling better LLM tool selection in fresh sessions:
 
-## Servers
+- **`search_memories`**: "**PRIMARY DISCOVERY TOOL** - Use this FIRST when user asks about past work..."
+- **`read_graph`**: "**FULL CONTEXT TOOL** - Use ONLY when you need complete system state..."
+- **`create_entities`**: "**KNOWLEDGE CREATION TOOL** - Create new entities with evo metadata..."
+- **`create_relations`**: "**EVO STRENGTHENING TOOL** - Create relationships for knowledge discovery..."
+- **`add_observations`**: "**EVO CONSOLIDATION TOOL** - Add new insights to existing entities..."
+- **`find_memories_by_name`**: "**DIRECT ACCESS TOOL** - Find specific entities by exact name..."
 
-### `mcp-neo4j-cypher` - natural language to Cypher queries
+### Evo-Memory Patterns
+- **Evo Strengthening**: Tools guide toward relationship creation and usage tracking
+- **Evo Consolidation**: Emphasis on updating existing knowledge rather than creating duplicates
+- **Discovery Over Retrieval**: Search-first patterns rather than full graph reads
+- **Intent Recognition**: Tool descriptions encode when each tool should be used
 
-[Details in Readme](./servers/mcp-neo4j-cypher/)
+## Key Problem Solved
 
-Get database schema for a configured database and execute generated read and write Cypher queries on that database.
+**The "Fresh Session Problem"**: In new sessions without context, LLMs default to obvious tool choices (like `read_graph`) rather than efficient patterns (like `search_memories` first). Our enhanced descriptions guide the LLM toward evo-memory patterns from the very first interaction.
 
-### `mcp-neo4j-memory` - knowledge graph memory stored in Neo4j
+## Installation
 
-[Details in Readme](./servers/mcp-neo4j-memory/)
-
-Store and retrieve entities and relationships from your personal knowledge graph in a local or remote Neo4j instance.
-Access that information over different sessions, conversations, clients.
-
-### `mcp-neo4j-cloud-aura-api` - Neo4j Aura cloud service management API
-
-[Details in Readme](./servers/mcp-neo4j-cloud-aura-api//)
-
-Manage your [Neo4j Aura](https://console.neo4j.io) instances directly from the comfort of your AI assistant chat.
-
-Create and destroy instances, find instances by name, scale them up and down and enable features.
-
-### `mcp-neo4j-data-modeling` - interactive graph data modeling and visualization
-
-[Details in Readme](./servers/mcp-neo4j-data-modeling/)
-
-Create, validate, and visualize Neo4j graph data models. Allows for model import/export from Arrows.app.
-
-## Transport Modes
-
-All servers support multiple transport modes:
-
-- **STDIO** (default): Standard input/output for local tools and Claude Desktop integration
-- **SSE**: Server-Sent Events for web-based deployments
-- **HTTP**: Streamable HTTP for modern web deployments and microservices
-
-### HTTP Transport Configuration
-
-To run a server in HTTP mode, use the `--transport http` flag:
+This is a Python FastMCP server requiring:
 
 ```bash
-# Basic HTTP mode
-mcp-neo4j-cypher --transport http
-
-# Custom HTTP configuration
-mcp-neo4j-cypher --transport http --host 127.0.0.1 --port 8080 --path /api/mcp/
+cd /Users/jeuston/SOURCE/evo-memory-server
+pip install -e .
 ```
 
-Environment variables are also supported:
+## Usage in Goose
+
+Configure as a command-line extension:
 
 ```bash
-export NEO4J_TRANSPORT=http
-export NEO4J_MCP_SERVER_HOST=127.0.0.1
-export NEO4J_MCP_SERVER_PORT=8080
-export NEO4J_MCP_SERVER_PATH=/api/mcp/
-mcp-neo4j-cypher
+goose configure
+# Select: Add Extension -> Command-line Extension
+# Name: evo-memory
+# Command: python -m mcp_neo4j_memory
+# Environment variables: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, NEO4J_DATABASE
 ```
 
-## Contributing
+## Differences from Original
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. **Enhanced Tool Docstrings**: Each FastMCP tool description includes intent guidance and usage patterns
+2. **Evo Metadata Emphasis**: Tools encourage inclusion of access_count, confidence, timestamps in observations
+3. **Relationship Focus**: Stronger emphasis on creating and maintaining entity relationships for knowledge discovery
+4. **Discovery Patterns**: Search-first methodology rather than full graph reads for efficiency
 
-## Blog Posts
+## Development
 
-* [Everything a Developer Needs to Know About the Model Context Protocol (MCP)](https://neo4j.com/blog/developer/model-context-protocol/)
-* [Claude Converses With Neo4j Via MCP - Graph Database & Analytics](https://neo4j.com/blog/developer/claude-converses-neo4j-via-mcp/)
-* [Building Knowledge Graphs With Claude and Neo4j: A No-Code MCP Approach - Graph Database & Analytics](https://neo4j.com/blog/developer/knowledge-graphs-claude-neo4j-mcp/)
+This fork maintains compatibility with the original neo4j-contrib/mcp-neo4j while adding evo-memory guidance layers through enhanced tool descriptions.
 
-## License
+## Project Naming
 
-MIT License
+"Evo-Memory Server" reflects the core enhancement: providing evolutionary, adaptive knowledge graph operations with intent-guided patterns.
