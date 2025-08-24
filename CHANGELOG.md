@@ -1,10 +1,19 @@
 ## Next
 
 ### Fixed
+* Fix extension startup hanging by resolving async server creation issues
+* Fix package build configuration and entry points for 'evo-memory-server'
+* Fix build paths to correctly point to servers/mcp-neo4j-memory/src
+* Add proper __main__.py module entry point for package execution
 
 ### Changed
+* Update package name from generic to 'evo-memory-server' for clarity
+* Temporarily disable dynamic descriptions integration pending FastMCP compatibility
 
 ### Added
+* Add promote_testing_to_active() method to dynamic descriptions system
+* Extension now successfully starts in Goose Desktop with hardcoded descriptions
+* Build system now correctly packages and installs extension
 
 ## v0.3.0
 
