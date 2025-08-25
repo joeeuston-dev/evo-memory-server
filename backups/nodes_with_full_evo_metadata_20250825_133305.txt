@@ -1,0 +1,20 @@
+n.name, n.type, n.access_count, n.confidence, n.effectiveness_score, n.status, n.created
+"Evo-Strengthening Test", "TestEntity", 5, 0.9, 0.1, "active", "2025-08-25T11:44:24.906927"
+NULL, NULL, 0, 0.5, 0.0, "deprecated", 2025-08-24T20:07:30.236951Z
+NULL, NULL, 0, 0.5, 0.0, "deprecated", 2025-08-24T20:07:30.351542Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T20:07:30.384204Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T20:07:30.388490Z
+NULL, NULL, 14, 0.5, 0.0, "active", 2025-08-24T20:07:30.393356Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T20:07:30.398171Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T20:07:30.402390Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T20:07:30.427407Z
+NULL, NULL, 16, 0.5, 0.0, "active", 2025-08-24T20:07:30.432216Z
+NULL, NULL, 0, 0.5, 0.0, "deprecated", 2025-08-24T20:08:02.332216Z
+NULL, NULL, 0, 0.5, 0.0, "testing", 2025-08-24T20:33:40.636454Z
+NULL, NULL, 0, 0.5, 0.0, "testing", 2025-08-24T20:33:47.872450Z
+NULL, NULL, 0, 0.5, 0.0, "testing", 2025-08-24T20:53:53.643388Z
+NULL, NULL, 0, 0.5, 0.0, "testing", 2025-08-24T20:54:00.398130Z
+NULL, NULL, 0, 0.5, 0.0, "testing", 2025-08-24T21:10:21.738178Z
+NULL, NULL, 16, 0.5, 0.0, "active", 2025-08-24T21:10:30.563425Z
+NULL, NULL, 17, 0.5, 0.0, "active", 2025-08-24T21:19:34.443748Z
+NULL, NULL, 5, 0.5, 0.0, "active", 2025-08-25T11:09:29.745868Z

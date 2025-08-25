@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from neo4j import AsyncDriver, RoutingControl
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # Set up logging
@@ -14,6 +15,13 @@ class Entity(BaseModel):
     name: str
     type: str
     observations: List[str]
+    # Evo-memory metadata fields
+    access_count: int = Field(default=0, ge=0, description="Number of times this entity has been accessed")
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Confidence in this entity's information quality")
+    effectiveness_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Effectiveness score from usage patterns")
+    created: datetime = Field(default_factory=datetime.now, description="When this entity was created")
+    last_accessed: Optional[datetime] = Field(default=None, description="When this entity was last accessed")
+    status: str = Field(default="active", description="Status of this entity (active/archived/deprecated)")
 
 class Relation(BaseModel):
     source: str
@@ -47,15 +55,42 @@ class Neo4jMemory:
             logger.debug(f"Fulltext index creation: {e}")
 
     async def load_graph(self, filter_query: str = "*"):
-        """Load the entire knowledge graph from Neo4j."""
-        logger.info("Loading knowledge graph from Neo4j")
-        query = """
+        """Load the entire knowledge graph from Neo4j with evo-metadata and evo-strengthening."""
+        logger.info(f"Loading knowledge graph from Neo4j with evo-strengthening for filter: '{filter_query}'")
+        
+        # Phase 2.1: Find entities, apply evo-strengthening, and calculate multi-dimensional discovery scores
+        update_query = """
             CALL db.index.fulltext.queryNodes('search', $filter) yield node as entity, score
+            SET entity.access_count = coalesce(entity.access_count, 0) + 1,
+                entity.last_accessed = datetime()
+            WITH entity, score
+            // Phase 2.1: Calculate multi-dimensional discovery score
+            WITH entity, score,
+                coalesce(entity.confidence, 0.5) as conf,
+                coalesce(entity.effectiveness_score, 0.0) as eff,
+                log(coalesce(entity.access_count, 0) + 1) as usage_factor,
+                CASE coalesce(entity.status, "active")
+                    WHEN "active" THEN 1.0
+                    WHEN "testing" THEN 0.8
+                    WHEN "deprecated" THEN 0.4
+                    ELSE 0.6
+                END as status_weight
+            WITH entity, score,
+                (conf * 0.4 + eff * 0.3 + usage_factor * 0.2 + status_weight * 0.1) as discovery_score
+            ORDER BY discovery_score DESC, score DESC
+            WITH collect(distinct entity) as entities
+            UNWIND entities as entity
             OPTIONAL MATCH (entity)-[r]-(other)
             RETURN collect(distinct {
                 name: entity.name, 
                 type: entity.type, 
-                observations: entity.observations
+                observations: entity.observations,
+                access_count: entity.access_count,
+                confidence: coalesce(entity.confidence, 0.5),
+                effectiveness_score: coalesce(entity.effectiveness_score, 0.0),
+                created: entity.created,
+                last_accessed: entity.last_accessed,
+                status: coalesce(entity.status, "active")
             }) as nodes,
             collect(distinct {
                 source: startNode(r).name, 
@@ -64,7 +99,7 @@ class Neo4jMemory:
             }) as relations
         """
         
-        result = await self.driver.execute_query(query, {"filter": filter_query}, routing_control=RoutingControl.READ)
+        result = await self.driver.execute_query(update_query, {"filter": filter_query}, routing_control=RoutingControl.WRITE)
         
         if not result.records:
             return KnowledgeGraph(entities=[], relations=[])
@@ -73,14 +108,41 @@ class Neo4jMemory:
         nodes = record.get('nodes', list())
         rels = record.get('relations', list())
         
-        entities = [
-            Entity(
-                name=node['name'],
-                type=node['type'],
-                observations=node.get('observations', list())
-            )
-            for node in nodes if node.get('name')
-        ]
+        entities = []
+        for node in nodes:
+            if node.get('name'):
+                # Convert datetime objects from Neo4j properly
+                created = node.get('created')
+                last_accessed = node.get('last_accessed')
+                
+                # Handle created datetime
+                if created is None:
+                    created = datetime.now()
+                elif hasattr(created, 'to_native'):
+                    # Neo4j DateTime object
+                    created = created.to_native()
+                elif isinstance(created, str):
+                    created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+                
+                # Handle last_accessed datetime
+                if last_accessed is not None:
+                    if hasattr(last_accessed, 'to_native'):
+                        # Neo4j DateTime object
+                        last_accessed = last_accessed.to_native()
+                    elif isinstance(last_accessed, str):
+                        last_accessed = datetime.fromisoformat(last_accessed.replace('Z', '+00:00'))
+                
+                entities.append(Entity(
+                    name=node['name'],
+                    type=node['type'],
+                    observations=node.get('observations', list()),
+                    access_count=node.get('access_count', 0),
+                    confidence=node.get('confidence', 0.5),
+                    effectiveness_score=node.get('effectiveness_score', 0.0),
+                    created=created or datetime.now(),
+                    last_accessed=last_accessed,
+                    status=node.get('status', 'active')
+                ))
         
         relations = [
             Relation(
@@ -97,16 +159,23 @@ class Neo4jMemory:
         return KnowledgeGraph(entities=entities, relations=relations)
 
     async def create_entities(self, entities: List[Entity]) -> List[Entity]:
-        """Create multiple new entities in the knowledge graph."""
-        logger.info(f"Creating {len(entities)} entities")
+        """Create multiple new entities in the knowledge graph with evo-metadata."""
+        logger.info(f"Creating {len(entities)} entities with evo-metadata")
         for entity in entities:
+            # Serialize datetime fields to ISO format for Neo4j storage
+            entity_data = entity.model_dump()
+            if entity_data.get('created'):
+                entity_data['created'] = entity_data['created'].isoformat()
+            if entity_data.get('last_accessed'):
+                entity_data['last_accessed'] = entity_data['last_accessed'].isoformat()
+            
             query = f"""
             WITH $entity as entity
             MERGE (e:Memory {{ name: entity.name }})
-            SET e += entity {{ .type, .observations }}
+            SET e += entity
             SET e:`{entity.type}`
             """
-            await self.driver.execute_query(query, {"entity": entity.model_dump()}, routing_control=RoutingControl.WRITE)
+            await self.driver.execute_query(query, {"entity": entity_data}, routing_control=RoutingControl.WRITE)
 
         return entities
 
@@ -205,22 +274,58 @@ class Neo4jMemory:
         return await self.load_graph(query)
 
     async def find_memories_by_name(self, names: List[str]) -> KnowledgeGraph:
-        """Find specific memories by their names. This does not use fulltext search."""
-        logger.info(f"Finding {len(names)} memories by name")
-        query = """
+        """Find specific memories by their names with evo-strengthening."""
+        logger.info(f"Finding {len(names)} memories by name with evo-strengthening")
+        
+        # First, update access patterns for evo-strengthening
+        update_query = """
         MATCH (e:Memory)
         WHERE e.name IN $names
+        SET e.access_count = coalesce(e.access_count, 0) + 1,
+            e.last_accessed = datetime()
         RETURN  e.name as name, 
                 e.type as type, 
-                e.observations as observations
+                e.observations as observations,
+                e.access_count as access_count,
+                coalesce(e.confidence, 0.5) as confidence,
+                coalesce(e.effectiveness_score, 0.0) as effectiveness_score,
+                e.created as created,
+                e.last_accessed as last_accessed,
+                coalesce(e.status, "active") as status
         """
-        result_nodes = await self.driver.execute_query(query, {"names": names}, routing_control=RoutingControl.READ)
+        result_nodes = await self.driver.execute_query(update_query, {"names": names}, routing_control=RoutingControl.WRITE)
         entities: list[Entity] = list()
         for record in result_nodes.records:
+            # Parse datetime fields properly from Neo4j DateTime objects
+            created = record['created']
+            last_accessed = record['last_accessed']
+            
+            # Handle None values
+            if created is None:
+                created = datetime.now()
+            elif hasattr(created, 'to_native'):
+                # Neo4j DateTime object
+                created = created.to_native()
+            elif isinstance(created, str):
+                created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            
+            if last_accessed is not None:
+                if hasattr(last_accessed, 'to_native'):
+                    # Neo4j DateTime object  
+                    last_accessed = last_accessed.to_native()
+                elif isinstance(last_accessed, str):
+                    last_accessed = datetime.fromisoformat(last_accessed.replace('Z', '+00:00'))
+            
             entities.append(Entity(
                 name=record['name'],
                 type=record['type'],
-                observations=record.get('observations', list())
+                observations=record.get('observations', list()),
+                access_count=record['access_count'],
+                confidence=record['confidence'],
+                effectiveness_score=record['effectiveness_score'],
+                created=created,
+                last_accessed=last_accessed,
+                status=record['status']
             ))
         
         # Get relations for found entities
@@ -241,5 +346,5 @@ class Neo4jMemory:
                     relationType=record["relationType"]
                 ))
         
-        logger.info(f"Found {len(entities)} entities and {len(relations)} relations")
+        logger.info(f"Found {len(entities)} entities and {len(relations)} relations with evo-strengthening applied")
         return KnowledgeGraph(entities=entities, relations=relations)

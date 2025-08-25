@@ -1,0 +1,129 @@
+node_type, access_status, confidence_status, count
+"APRA Standard", "missing_access_count", "missing_confidence", 2
+"AWS Service", "missing_access_count", "missing_confidence", 4
+"ActionPlan", "has_access_count", "missing_confidence", 1
+"ActiveProject", "has_access_count", "missing_confidence", 7
+"Architectural Pattern", "missing_access_count", "missing_confidence", 1
+"AutomationRecipe", "has_access_count", "missing_confidence", 4
+"BreakthroughSolution", "has_access_count", "missing_confidence", 1
+"Business Framework", "has_access_count", "missing_confidence", 1
+"Business Logic", "missing_access_count", "missing_confidence", 4
+"Business Process Workflow", "missing_access_count", "missing_confidence", 1
+"Business Workflow", "missing_access_count", "missing_confidence", 1
+"BusinessContext", "has_access_count", "missing_confidence", 1
+"BusinessFramework", "missing_access_count", "missing_confidence", 1
+"CompletedExperiment", "has_access_count", "missing_confidence", 4
+"CompletedExperiment", "missing_access_count", "missing_confidence", 3
+"CompletedMilestone", "has_access_count", "missing_confidence", 4
+"CompletedMilestone", "missing_access_count", "missing_confidence", 3
+"CompletedProject", "has_access_count", "missing_confidence", 22
+"CompletedProject", "missing_access_count", "missing_confidence", 1
+"CompletedProjectPhase", "has_access_count", "missing_confidence", 1
+"Compliance Document", "missing_access_count", "missing_confidence", 1
+"Compliance Requirement", "missing_access_count", "missing_confidence", 1
+"ComplianceProcess", "has_access_count", "missing_confidence", 1
+"Conditional Workflow", "missing_access_count", "missing_confidence", 1
+"Coordination Framework", "has_access_count", "missing_confidence", 1
+"CoreMethodology", "has_access_count", "missing_confidence", 4
+"Cost Framework", "has_access_count", "missing_confidence", 1
+"Critical Safety Principle", "has_access_count", "missing_confidence", 1
+"Cross-Cutting Workflow", "missing_access_count", "missing_confidence", 1
+"Current Project", "has_access_count", "missing_confidence", 2
+"CurrentTask", "has_access_count", "missing_confidence", 2
+"Data Models", "has_access_count", "missing_confidence", 2
+"Data Models", "missing_access_count", "missing_confidence", 1
+"DecisionFramework", "missing_access_count", "missing_confidence", 1
+"DefinitiveStandard", "has_access_count", "missing_confidence", 1
+"Developer Guide", "has_access_count", "missing_confidence", 1
+"End-to-End Workflow", "has_access_count", "missing_confidence", 1
+"Enterprise System", "missing_access_count", "missing_confidence", 1
+"Experiment", "has_access_count", "missing_confidence", 1
+"External Dependencies", "missing_access_count", "missing_confidence", 1
+"Fundamental Constraint", "missing_access_count", "missing_confidence", 1
+"Implementation Guide", "has_access_count", "missing_confidence", 1
+"Implementation Standards", "missing_access_count", "missing_confidence", 1
+"Implementation Success", "has_access_count", "missing_confidence", 1
+"ImplementationPattern", "has_access_count", "missing_confidence", 4
+"ImplementationPattern", "missing_access_count", "missing_confidence", 1
+"Industry Body", "missing_access_count", "missing_confidence", 1
+"Industry Sector", "missing_access_count", "missing_confidence", 1
+"Industry Standards", "missing_access_count", "missing_confidence", 1
+"InnovationFramework", "missing_access_count", "missing_confidence", 2
+"Integration Points", "missing_access_count", "missing_confidence", 1
+"Knowledge Export", "missing_access_count", "missing_confidence", 1
+"Lambda Function", "missing_access_count", "missing_confidence", 4
+"Lambda Function", "has_access_count", "missing_confidence", 2
+"Learning Case", "has_access_count", "missing_confidence", 1
+"Legal Framework", "missing_access_count", "missing_confidence", 1
+"Legal Obligation", "missing_access_count", "missing_confidence", 1
+"LegalFramework", "has_access_count", "missing_confidence", 1
+"Memory Category", "has_access_count", "missing_confidence", 3
+"Meta-Operating Principle", "missing_access_count", "missing_confidence", 1
+"Methodology", "has_access_count", "missing_confidence", 1
+"MethodologyFramework", "has_access_count", "missing_confidence", 1
+"MissingMCPTool", "has_access_count", "missing_confidence", 2
+"Modernization Assessment", "missing_access_count", "missing_confidence", 2
+"Modernization Assessment", "has_access_count", "missing_confidence", 2
+"Modernization Constraint", "missing_access_count", "missing_confidence", 1
+"Modernization Risk", "has_access_count", "missing_confidence", 1
+"Modernization Template", "has_access_count", "missing_confidence", 2
+"Modernization Template", "missing_access_count", "missing_confidence", 2
+"Operating Principle", "missing_access_count", "missing_confidence", 4
+"Operating Principle", "has_access_count", "missing_confidence", 2
+"OperatingPrinciple", "has_access_count", "missing_confidence", 3
+"Operational Risk", "has_access_count", "missing_confidence", 1
+"OperationalDocumentation", "has_access_count", "missing_confidence", 1
+"Organizational Framework", "missing_access_count", "missing_confidence", 1
+"ProvenResult", "has_access_count", "missing_confidence", 5
+"Quality Framework", "has_access_count", "missing_confidence", 2
+"QualityFramework", "missing_access_count", "missing_confidence", 1
+"Query Collection", "missing_access_count", "missing_confidence", 1
+"Regulatory Body", "missing_access_count", "missing_confidence", 2
+"Regulatory Framework", "has_access_count", "missing_confidence", 1
+"Regulatory Obligation", "missing_access_count", "missing_confidence", 1
+"Regulatory Standard", "missing_access_count", "missing_confidence", 1
+"RegulatoryFramework", "has_access_count", "missing_confidence", 1
+"Resource Framework", "missing_access_count", "missing_confidence", 1
+"Security Constraint", "missing_access_count", "missing_confidence", 1
+"Security Pattern", "missing_access_count", "missing_confidence", 1
+"Service Logic", "missing_access_count", "missing_confidence", 3
+"Service Logic", "has_access_count", "missing_confidence", 1
+"Shared Business Logic", "missing_access_count", "missing_confidence", 1
+"Shared Component", "missing_access_count", "missing_confidence", 1
+"Shared Data Logic", "missing_access_count", "missing_confidence", 1
+"Shared Infrastructure Logic", "missing_access_count", "missing_confidence", 1
+"Shared Technical Logic", "missing_access_count", "missing_confidence", 1
+"Strategic Plan", "has_access_count", "missing_confidence", 1
+"StrategicFramework", "missing_access_count", "missing_confidence", 1
+"System Configuration", "has_access_count", "missing_confidence", 1
+"System Extension", "has_access_count", "missing_confidence", 1
+"System Protocol", "has_access_count", "missing_confidence", 1
+"SystemDocumentation", "missing_access_count", "missing_confidence", 1
+"SystemDocumentation", "has_access_count", "missing_confidence", 1
+"TeamCoordinationFramework", "missing_access_count", "missing_confidence", 1
+"Technical Pattern", "missing_access_count", "missing_confidence", 1
+"TechnicalArchitecture", "has_access_count", "missing_confidence", 1
+"TechnicalInnovation", "has_access_count", "missing_confidence", 1
+"TechnicalStandard", "has_access_count", "missing_confidence", 4
+"TechnicalStandard", "missing_access_count", "missing_confidence", 1
+"TestEntity", "has_access_count", "missing_confidence", 1
+"TestEntity", "has_access_count", "has_confidence", 1
+"Validation Strategy", "has_access_count", "missing_confidence", 3
+"Validation Strategy", "missing_access_count", "missing_confidence", 1
+"Validation Toolset", "has_access_count", "missing_confidence", 2
+"WorkingSession", "has_access_count", "missing_confidence", 2
+"active_development_project", "has_access_count", "missing_confidence", 1
+"ai_architecture", "has_access_count", "missing_confidence", 1
+"bug", "has_access_count", "missing_confidence", 1
+"configuration_strategy", "missing_access_count", "missing_confidence", 1
+"context", "missing_access_count", "missing_confidence", 1
+"data", "missing_access_count", "missing_confidence", 1
+"deployment_process", "has_access_count", "missing_confidence", 1
+"development_pattern", "has_access_count", "missing_confidence", 1
+"educational_methodology", "has_access_count", "missing_confidence", 1
+"implementation_insight", "missing_access_count", "missing_confidence", 1
+"no_type", "has_access_count", "has_confidence", 18
+"solution", "has_access_count", "missing_confidence", 1
+"technical_capability", "missing_access_count", "missing_confidence", 1
+"technical_framework", "has_access_count", "missing_confidence", 1
+"technical_pattern", "missing_access_count", "missing_confidence", 1

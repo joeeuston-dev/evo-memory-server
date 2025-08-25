@@ -1,0 +1,2 @@
+total_nodes, nodes_with_access_count, nodes_with_confidence, nodes_with_effectiveness_score, nodes_with_created, nodes_with_last_accessed, nodes_with_status
+234, 149, 19, 19, 19, 141, 19

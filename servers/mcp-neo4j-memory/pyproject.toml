@@ -1,6 +1,6 @@
 [project]
 name = "evo-memory-server"
-version = "0.3.0"
+version = "0.5.0"
 description = "Evo-Memory Server - Evolutionary Knowledge Graph with Dynamic Tool Descriptions"
 readme = "README.md"
 requires-python = ">=3.10"

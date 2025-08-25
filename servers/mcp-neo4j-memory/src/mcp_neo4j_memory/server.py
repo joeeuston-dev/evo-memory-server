@@ -76,8 +76,10 @@ class DynamicToolProvider:
             logger.info(f"MCP tool: search_memories (query: {query})")
             try:
                 result = await self.memory.search_memories(query)
+                # Convert KnowledgeGraph to JSON-serializable format
+                result_dict = result.model_dump(mode='json')
                 return ToolResult(content=[TextContent(type="text", text=result.model_dump_json())],
-                              structured_content=result)
+                              structured_content=result_dict)
             except Neo4jError as e:
                 logger.error(f"Neo4j error searching memories: {e}")
                 raise ToolError(f"Neo4j error searching memories: {e}")
@@ -104,8 +106,10 @@ class DynamicToolProvider:
             logger.info("MCP tool: read_graph")
             try:
                 result = await self.memory.read_graph()
+                # Convert KnowledgeGraph to JSON-serializable format
+                result_dict = result.model_dump(mode='json')
                 return ToolResult(content=[TextContent(type="text", text=result.model_dump_json())],
-                              structured_content=result)
+                              structured_content=result_dict)
             except Neo4jError as e:
                 logger.error(f"Neo4j error reading full knowledge graph: {e}")
                 raise ToolError(f"Neo4j error reading full knowledge graph: {e}")
@@ -133,8 +137,10 @@ class DynamicToolProvider:
             try:
                 entity_objects = [Entity.model_validate(entity) for entity in entities]
                 result = await self.memory.create_entities(entity_objects)
-                return ToolResult(content=[TextContent(type="text", text=json.dumps([e.model_dump() for e in result]))],
-                              structured_content={"result": result})
+                # Use Pydantic's model_dump with mode='json' to handle datetime serialization
+                serialized_entities = [e.model_dump(mode='json') for e in result]
+                return ToolResult(content=[TextContent(type="text", text=json.dumps(serialized_entities))],
+                              structured_content={"result": serialized_entities})
             except Neo4jError as e:
                 logger.error(f"Neo4j error creating entities: {e}")
                 raise ToolError(f"Neo4j error creating entities: {e}")
@@ -219,8 +225,10 @@ class DynamicToolProvider:
             logger.info(f"MCP tool: find_memories_by_name ({len(names)} names)")
             try:
                 result = await self.memory.find_memories_by_name(names)
+                # Convert KnowledgeGraph to JSON-serializable format
+                result_dict = result.model_dump(mode='json')
                 return ToolResult(content=[TextContent(type="text", text=result.model_dump_json())],
-                              structured_content=result)
+                              structured_content=result_dict)
             except Neo4jError as e:
                 logger.error(f"Neo4j error finding memories by name: {e}")
                 raise ToolError(f"Neo4j error finding memories by name: {e}")
