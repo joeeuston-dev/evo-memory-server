@@ -559,6 +559,34 @@ async def main(
     )
     logger.info(f"DynamicToolDescriptionManager initialized (enabled={dynamic_descriptions_enabled})")
     
+    # Auto-setup dynamic descriptions on first run if enabled
+    if dynamic_descriptions_enabled:
+        try:
+            # Check if schema exists, if not set it up
+            health_status = await description_manager.health_check()
+            if health_status.get("active_descriptions", 0) == 0:
+                logger.info("No active descriptions found - performing first-run setup")
+                
+                # Setup schema
+                await description_manager.setup_schema()
+                logger.info("Dynamic descriptions schema created")
+                
+                # Seed initial descriptions
+                seed_result = await description_manager.seed_initial_descriptions()
+                created_count = len(seed_result.get("created", []))
+                logger.info(f"Seeded {created_count} initial tool descriptions")
+                
+                if created_count > 0:
+                    logger.info("Dynamic descriptions auto-setup completed successfully")
+                else:
+                    logger.warning("No descriptions were created during auto-setup")
+            else:
+                logger.info(f"Dynamic descriptions already initialized ({health_status.get('active_descriptions')} active)")
+                
+        except Exception as e:
+            logger.error(f"Error during dynamic descriptions auto-setup: {e}")
+            logger.info("Falling back to hardcoded descriptions")
+    
     # Create fulltext index
     await memory.create_fulltext_index()
     
